@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020 Adam <Adam@sigterm.info>
+ * Copyright (c) 2021, Jonathan Rousseau <https://github.com/JoRouss>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,13 +25,22 @@
  */
 package net.runelite.client.plugins.dpscounter;
 
+import java.awt.Color;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("dpscounter")
 public interface DpsConfig extends Config
 {
+	@ConfigSection(
+		position = 4,
+		name = "Party",
+		description = "Party related settings"
+	)
+	String partySection = "Party";
+
 	@ConfigItem(
 		position = 0,
 		keyName = "showDamage",
@@ -73,5 +83,17 @@ public interface DpsConfig extends Config
 	default boolean bossDamage()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		position = 5,
+		keyName = "selfColor",
+		name = "Self color",
+		description = "Change your own damage line color",
+		section = partySection
+	)
+	default Color selfColor()
+	{
+		return Color.white;
 	}
 }
