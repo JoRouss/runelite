@@ -167,6 +167,7 @@ public class DpsCounterPlugin extends Plugin
 		wsClient.unregisterMessage(DpsUpdate.class);
 		overlayManager.remove(dpsOverlay);
 		members.clear();
+		bossDied = false;
 	}
 
 	@Subscribe
