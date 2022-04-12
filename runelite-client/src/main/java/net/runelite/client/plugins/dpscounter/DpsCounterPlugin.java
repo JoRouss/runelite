@@ -145,6 +145,8 @@ public class DpsCounterPlugin extends Plugin
 	@Getter(AccessLevel.PACKAGE)
 	private final DpsMember total = new DpsMember("Total");
 
+	private boolean bossDied;
+
 	@Provides
 	DpsConfig provideConfig(ConfigManager configManager)
 	{
@@ -185,10 +187,19 @@ public class DpsCounterPlugin extends Plugin
 
 		Hitsplat hitsplat = hitsplatApplied.getHitsplat();
 
+		final int npcId = ((NPC) actor).getId();
+		boolean isBoss = BOSSES.contains(npcId);
+
+		// Reset if someone hit a boss and the previous one is dead
+		if (bossDied && isBoss && dpsConfig.autoresetNextHit())
+		{
+			bossDied = false;
+			members.clear();
+			total.reset();
+		}
+
 		if (hitsplat.isMine())
 		{
-			final int npcId = ((NPC) actor).getId();
-			boolean isBoss = BOSSES.contains(npcId);
 			int hit = hitsplat.getAmount();
 			PartyMember localMember = partyService.getLocalMember();
 
@@ -214,8 +225,6 @@ public class DpsCounterPlugin extends Plugin
 		}
 		else if (hitsplat.isOthers())
 		{
-			final int npcId = ((NPC) actor).getId();
-			boolean isBoss = BOSSES.contains(npcId);
 			if ((dpsConfig.bossDamage() || actor != player.getInteracting()) && !isBoss)
 			{
 				// only track damage to npcs we are attacking, or is a nearby common boss
@@ -244,6 +253,14 @@ public class DpsCounterPlugin extends Plugin
 		if (name == null)
 		{
 			return;
+		}
+
+		// Reset if someone hit a boss and the previous one is dead
+		if (bossDied && dpsUpdate.isBoss() && dpsConfig.autoresetNextHit())
+		{
+			bossDied = false;
+			members.clear();
+			total.reset();
 		}
 
 		// Received non-boss damage, but we only want boss damage
@@ -284,6 +301,7 @@ public class DpsCounterPlugin extends Plugin
 		if (npc.isDead() && BOSSES.contains(npc.getId()))
 		{
 			log.debug("Boss has died!");
+			bossDied = true;
 
 			if (dpsConfig.autoreset())
 			{
