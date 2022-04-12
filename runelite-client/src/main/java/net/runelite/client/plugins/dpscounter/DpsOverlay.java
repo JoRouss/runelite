@@ -122,10 +122,20 @@ class DpsOverlay extends OverlayPanel
 
 		if (inParty && dpsConfig.sortByDps())
 		{
-			dpsMembersValues = dpsMembers.values()
-				.stream()
-				.sorted((e1, e2) -> Float.compare(e2.getDamage(), e1.getDamage()))
-				.collect(Collectors.toList());
+			if (showDamage)
+			{
+				dpsMembersValues = dpsMembers.values()
+					.stream()
+					.sorted((e1, e2) -> Integer.compare(e2.getDamage(), e1.getDamage()))
+					.collect(Collectors.toList());
+			}
+			else
+			{
+				dpsMembersValues = dpsMembers.values()
+					.stream()
+					.sorted((e1, e2) -> Float.compare(e2.getDps(), e1.getDps()))
+					.collect(Collectors.toList());
+			}
 		}
 		else
 		{
