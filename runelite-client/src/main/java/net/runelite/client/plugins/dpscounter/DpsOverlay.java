@@ -31,7 +31,6 @@ import java.awt.Graphics2D;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
@@ -125,7 +124,7 @@ class DpsOverlay extends OverlayPanel
 		{
 			dpsMembersValues = dpsMembers.values()
 				.stream()
-				.sorted(Comparator.reverseOrder())
+				.sorted((e1, e2) -> Float.compare(e2.getDamage(), e1.getDamage()))
 				.collect(Collectors.toList());
 		}
 		else
