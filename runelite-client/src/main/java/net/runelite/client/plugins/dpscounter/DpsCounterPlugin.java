@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020 Adam <Adam@sigterm.info>
+ * Copyright (c) 2021, Jonathan Rousseau <https://github.com/JoRouss>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -146,6 +147,8 @@ public class DpsCounterPlugin extends Plugin
 	@Getter(AccessLevel.PACKAGE)
 	private final DpsMember total = new DpsMember("Total");
 
+	private boolean bossDied;
+
 	@Provides
 	DpsConfig provideConfig(ConfigManager configManager)
 	{
@@ -166,6 +169,7 @@ public class DpsCounterPlugin extends Plugin
 		wsClient.unregisterMessage(DpsUpdate.class);
 		overlayManager.remove(dpsOverlay);
 		members.clear();
+		bossDied = false;
 	}
 
 	@Subscribe
@@ -186,36 +190,44 @@ public class DpsCounterPlugin extends Plugin
 
 		Hitsplat hitsplat = hitsplatApplied.getHitsplat();
 
+		final int npcId = ((NPC) actor).getId();
+		boolean isBoss = BOSSES.contains(npcId);
+
+		// Reset if someone hit a boss and the previous one is dead
+		if (bossDied && isBoss && dpsConfig.autoresetNextHit())
+		{
+			bossDied = false;
+			members.clear();
+			total.reset();
+		}
+
 		if (hitsplat.isMine())
 		{
-			final int npcId = ((NPC) actor).getId();
-			boolean isBoss = BOSSES.contains(npcId);
+			int hit = hitsplat.getAmount();
+			PartyMember localMember = partyService.getLocalMember();
+
+			// broadcast damage
+			if (localMember != null)
+			{
+				final DpsUpdate dpsUpdate = new DpsUpdate(hit, isBoss);
+				dpsUpdate.setMemberId(localMember.getMemberId());
+				wsClient.send(dpsUpdate);
+			}
+
 			if (dpsConfig.bossDamage() && !isBoss)
 			{
 				return;
 			}
 
-			int hit = hitsplat.getAmount();
-			// Update local member
-			PartyMember localMember = partyService.getLocalMember();
 			// If not in a party, user local player name
 			final String name = localMember == null ? player.getName() : localMember.getName();
 			DpsMember dpsMember = members.computeIfAbsent(name, DpsMember::new);
 			dpsMember.addDamage(hit);
 
-			// broadcast damage
-			if (localMember != null)
-			{
-				final DpsUpdate specialCounterUpdate = new DpsUpdate(hit);
-				specialCounterUpdate.setMemberId(localMember.getMemberId());
-				wsClient.send(specialCounterUpdate);
-			}
 			// apply to total
 		}
 		else if (hitsplat.isOthers())
 		{
-			final int npcId = ((NPC) actor).getId();
-			boolean isBoss = BOSSES.contains(npcId);
 			if ((dpsConfig.bossDamage() || actor != player.getInteracting()) && !isBoss)
 			{
 				// only track damage to npcs we are attacking, or is a nearby common boss
@@ -242,6 +254,20 @@ public class DpsCounterPlugin extends Plugin
 
 		String name = partyService.getMemberById(dpsUpdate.getMemberId()).getName();
 		if (name == null)
+		{
+			return;
+		}
+
+		// Reset if someone hit a boss and the previous one is dead
+		if (bossDied && dpsUpdate.isBoss() && dpsConfig.autoresetNextHit())
+		{
+			bossDied = false;
+			members.clear();
+			total.reset();
+		}
+
+		// Received non-boss damage, but we only want boss damage
+		if (!dpsUpdate.isBoss() && dpsConfig.bossDamage())
 		{
 			return;
 		}
@@ -278,6 +304,7 @@ public class DpsCounterPlugin extends Plugin
 		if (npc.isDead() && BOSSES.contains(npc.getId()))
 		{
 			log.debug("Boss has died!");
+			bossDied = true;
 
 			if (dpsConfig.autoreset())
 			{
